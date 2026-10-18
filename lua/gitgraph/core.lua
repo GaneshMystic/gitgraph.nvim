@@ -442,8 +442,88 @@ local function insert_symbols_on_connector_rows(graph, sym)
   log.info('insert_symbols_on_connector_rows dur:', dur * 1000, 'ms')
 end
 
----@param graph I.Row[]
+---@param branch_names string[]
+---@param branch_color_idx integer
+---@return string, table[]
+local function format_branch_badges(branch_names, branch_color_idx)
+  if #branch_names == 0 then
+    return '', {}
+  end
+
+  local locals = {}
+  local remotes = {}
+  local others = {}
+
+  for _, b in ipairs(branch_names) do
+    local clean = b:gsub('HEAD %-> ', '')
+    local remote_prefix, branch_part = clean:match('^(%a+)/(%a.+)$')
+    if remote_prefix and (remote_prefix == 'origin' or remote_prefix == 'upstream' or remote_prefix == 'remote') then
+      remotes[#remotes + 1] = { remote = remote_prefix, branch = branch_part, full = clean }
+    else
+      if clean == 'HEAD' or clean:match('^HEAD/') then
+        others[#others + 1] = clean
+      else
+        locals[#locals + 1] = clean
+      end
+    end
+  end
+
+  local segments = {}
+  local matched_remotes = {}
+
+  for _, l_branch in ipairs(locals) do
+    local paired_remote = nil
+    for idx, r in ipairs(remotes) do
+      if not matched_remotes[idx] and r.branch == l_branch then
+        paired_remote = r
+        matched_remotes[idx] = true
+        break
+      end
+    end
+
+    segments[#segments + 1] = { text = ' ', hg = 'GitGraphBranch' .. branch_color_idx .. 'Cap' }
+    segments[#segments + 1] = { text = ' ' .. l_branch .. ' ', hg = 'GitGraphBranch' .. branch_color_idx .. 'Badge' }
+
+    if paired_remote then
+      segments[#segments + 1] = { text = '', hg = 'GitGraphBranch' .. branch_color_idx .. 'RemoteSep' }
+      segments[#segments + 1] = { text = ' ' .. paired_remote.remote , hg = 'GitGraphRemoteBadge' }
+      segments[#segments + 1] = { text = ' ', hg = 'GitGraphRemoteCap' }
+    else
+      segments[#segments + 1] = { text = ' ', hg = 'GitGraphBranch' .. branch_color_idx .. 'Cap' }
+    end
+  end
+
+  for idx, r in ipairs(remotes) do
+    if not matched_remotes[idx] then
+      segments[#segments + 1] = { text = ' ', hg = 'GitGraphBranch' .. branch_color_idx .. 'Cap' }
+      segments[#segments + 1] = { text = ' ' .. r.full , hg = 'GitGraphBranch' .. branch_color_idx .. 'Badge' }
+      segments[#segments + 1] = { text = ' ', hg = 'GitGraphBranch' .. branch_color_idx .. 'Cap' }
+    end
+  end
+
+  for _, o in ipairs(others) do
+    segments[#segments + 1] = { text = ' ', hg = 'GitGraphRemoteCap' }
+    segments[#segments + 1] = { text = ' ' .. o .. ' ', hg = 'GitGraphRemoteBadge' }
+    segments[#segments + 1] = { text = ' ', hg = 'GitGraphRemoteCap' }
+  end
+
+  local full_str = ''
+  local hls = {}
+  local cur_pos = 0
+
+  for _, seg in ipairs(segments) do
+    local start = cur_pos
+    local stop = start + #seg.text
+    full_str = full_str .. seg.text
+    cur_pos = stop
+    hls[#hls + 1] = { hg = seg.hg, start = start, stop = stop }
+  end
+
+  return full_str, hls
+end
+
 ---@param options I.DrawOptions
+---@param graph I.Row[]
 ---@param sym I.GGSymbols
 ---@param fields I.GGVarName[]
 ---@param commits table<string, I.Commit>
@@ -633,14 +713,15 @@ local function graph_to_lines(options, graph, sym, fields, commits)
         local timestamp = c.author_date
         local author = c.author_name
 
-        local branch_names = #c.branch_names > 0 and ('(%s)'):format(table.concat(c.branch_names, ' | ')) or nil
-
         local is_head = false
         if not head_found then
-          is_head = branch_names and branch_names:match('HEAD %->') or false
-          if is_head then
-            head_found = true
-            head_loc = idx
+          for _, b in ipairs(c.branch_names) do
+            if b:match('HEAD %->') then
+              is_head = true
+              head_found = true
+              head_loc = idx
+              break
+            end
           end
         end
 
@@ -650,7 +731,7 @@ local function graph_to_lines(options, graph, sym, fields, commits)
           ['hash'] = hash,
           ['timestamp'] = timestamp,
           ['author'] = author,
-          ['branch_name'] = branch_names,
+          ['branch_name'] = '',
           ['tag'] = tags,
         }
 
@@ -667,15 +748,28 @@ local function graph_to_lines(options, graph, sym, fields, commits)
 
         --- add hihlights for hash, timestamp, branch_names and tags
         for _, name in ipairs(fields) do
-          local value = items[name]
-          if value then
-            highlights[#highlights + 1] = {
-              hg = ITEM_HGS[name].name,
-              row = idx,
-              start = offset,
-              stop = offset + #value,
-            }
-            add_to_row(value)
+          if name == 'branch_name' and #c.branch_names > 0 then
+            local badge_str, badge_hls = format_branch_badges(c.branch_names, c.j % NUM_BRANCH_COLORS + 1)
+            for _, bh in ipairs(badge_hls) do
+              highlights[#highlights + 1] = {
+                hg = bh.hg,
+                row = idx,
+                start = offset + bh.start,
+                stop = offset + bh.stop,
+              }
+            end
+            add_to_row(badge_str)
+          else
+            local value = items[name]
+            if value then
+              highlights[#highlights + 1] = {
+                hg = ITEM_HGS[name].name,
+                row = idx,
+                start = offset,
+                stop = offset + #value,
+              }
+              add_to_row(value)
+            end
           end
         end
 
@@ -694,7 +788,7 @@ local function graph_to_lines(options, graph, sym, fields, commits)
           if #children == 0 then
             children = '_'
           end
-          add_to_row(':  ' .. children .. ' ' .. c.msg .. ' ' .. parents)
+          add_to_row(':  ' .. children + ' ' .. c.msg + ' ' .. parents) -- Wait, let's keep exact string concat: c.msg .. ' ' .. parents
         end
       else
         local c = graph[idx - 1].commit

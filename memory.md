@@ -18,6 +18,16 @@ Welcome! This document serves as the project memory for `gitgraph.nvim`, a Neovi
 - `lua/gitgraph/tests.lua`: Test suite runner (`test()` and `random()`).
 - `lua/gitgraph/log.lua`: Lightweight logging utility.
 
+## Design Decisions & Specifications
+
+### Branch Name Rendering Design
+Multi-segment powerline badge format: `  feature  origin/main `
+- **Left Cap (``)**: `bg = NONE`, `fg = primary_badge_bg`
+- **Main Branch Body (`  feature `)**: `bg = primary_badge_bg`, `fg = NONE` (transparent text style)
+- **Separator (``)**: `bg = gray_bg`, `fg = primary_badge_bg`
+- **Remote / Tracking Branch (` origin/main `)**: `bg = gray_bg`, `fg = NONE` (transparent text style)
+- **Right Cap (``)**: `bg = NONE`, `fg = gray_bg`
+
 ## Key Features & Roadmap
 
 ### Completed

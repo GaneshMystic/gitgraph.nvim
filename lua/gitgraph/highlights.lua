@@ -27,14 +27,20 @@ M.BRANCH_HGS = {
 function M.set_highlights()
   local function set_hl(name, highlight)
     local existing_hg = vim.api.nvim_get_hl(0, { name = name })
-    if #existing_hg == 0 then
+    if vim.tbl_isempty(existing_hg) then
       vim.api.nvim_set_hl(0, name, vim.tbl_deep_extend('force', highlight, { default = true }))
     end
   end
 
-  for _, hg in pairs(M.BRANCH_HGS) do
+  for i, hg in ipairs(M.BRANCH_HGS) do
     set_hl(hg.name, { fg = hg.fg })
+    set_hl('GitGraphBranch' .. i .. 'Cap', { fg = hg.fg })
+    set_hl('GitGraphBranch' .. i .. 'Badge', { fg = '#282828', bg = hg.fg, bold = true })
+    set_hl('GitGraphBranch' .. i .. 'RemoteSep', { fg = hg.fg, bg = '#3c3836' })
   end
+
+  set_hl('GitGraphRemoteBadge', { fg = '#ebdbb2', bg = '#3c3836' })
+  set_hl('GitGraphRemoteCap', { fg = '#3c3836' })
 
   for _, hg in pairs(M.ITEM_HGS) do
     set_hl(hg.name, { fg = hg.fg })
