@@ -21,6 +21,7 @@ Welcome! This document serves as the project memory for `gitgraph.nvim`, a Neovi
 ## Key Features & Roadmap
 
 ### Completed
+
 - 100% Lua
 - Temporal topological order with branch lane sticking
 - Merge commit and branch children identification
@@ -29,10 +30,12 @@ Welcome! This document serves as the project memory for `gitgraph.nvim`, a Neovi
 - Performant scrolling and branch crossings
 
 ### Future / Roadmap
+
 - Auto updating graph
 - Performant load times for large repos
 - Additional interactive features / keymaps
 
 ## Development Rules
+
 - Conversing in minimal words with the user.
 - Use `git ls-files` instead of recursive file listing commands like `ls -R`.
