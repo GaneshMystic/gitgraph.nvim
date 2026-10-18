@@ -42,6 +42,10 @@ function M.set_highlights()
   set_hl('GitGraphRemoteBadge', { fg = '#ebdbb2', bg = '#3c3836' })
   set_hl('GitGraphRemoteCap', { fg = '#3c3836' })
 
+  local tag_color = M.ITEM_HGS.tag.fg
+  set_hl('GitGraphTagCap', { fg = tag_color })
+  set_hl('GitGraphTagBadge', { fg = '#282828', bg = tag_color, bold = true })
+
   for _, hg in pairs(M.ITEM_HGS) do
     set_hl(hg.name, { fg = hg.fg })
   end

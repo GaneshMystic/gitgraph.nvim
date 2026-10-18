@@ -522,6 +522,36 @@ local function format_branch_badges(branch_names, branch_color_idx)
   return full_str, hls
 end
 
+---@param tags string[]
+---@return string, table[]
+local function format_tag_badges(tags)
+  if #tags == 0 then
+    return '', {}
+  end
+
+  local segments = {}
+  for _, t in ipairs(tags) do
+    local clean_tag = t:gsub('tag:%s*', '')
+    segments[#segments + 1] = { text = '', hg = 'GitGraphTagCap' }
+    segments[#segments + 1] = { text = ' 󰓻 ' .. clean_tag .. ' ', hg = 'GitGraphTagBadge' }
+    segments[#segments + 1] = { text = '', hg = 'GitGraphTagCap' }
+  end
+
+  local full_str = ''
+  local hls = {}
+  local cur_pos = 0
+
+  for _, seg in ipairs(segments) do
+    local start = cur_pos
+    local stop = start + #seg.text
+    full_str = full_str .. seg.text
+    cur_pos = stop
+    hls[#hls + 1] = { hg = seg.hg, start = start, stop = stop }
+  end
+
+  return full_str, hls
+end
+
 ---@param options I.DrawOptions
 ---@param graph I.Row[]
 ---@param sym I.GGSymbols
@@ -725,14 +755,12 @@ local function graph_to_lines(options, graph, sym, fields, commits)
           end
         end
 
-        local tags = #c.tags > 0 and ('(%s)'):format(table.concat(c.tags, ' | ')) or nil
-
         local items = {
           ['hash'] = hash,
           ['timestamp'] = timestamp,
           ['author'] = author,
           ['branch_name'] = '',
-          ['tag'] = tags,
+          ['tag'] = '',
         }
 
         local pad_size = padding - #proper_row.cells
@@ -750,6 +778,17 @@ local function graph_to_lines(options, graph, sym, fields, commits)
         for _, name in ipairs(fields) do
           if name == 'branch_name' and #c.branch_names > 0 then
             local badge_str, badge_hls = format_branch_badges(c.branch_names, c.j % NUM_BRANCH_COLORS + 1)
+            for _, bh in ipairs(badge_hls) do
+              highlights[#highlights + 1] = {
+                hg = bh.hg,
+                row = idx,
+                start = offset + bh.start,
+                stop = offset + bh.stop,
+              }
+            end
+            add_to_row(badge_str)
+          elseif name == 'tag' and #c.tags > 0 then
+            local badge_str, badge_hls = format_tag_badges(c.tags)
             for _, bh in ipairs(badge_hls) do
               highlights[#highlights + 1] = {
                 hg = bh.hg,

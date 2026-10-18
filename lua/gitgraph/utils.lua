@@ -293,7 +293,7 @@ end
 function M.apply_buffer_options(buf)
   vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
   vim.cmd('set filetype=gitgraph')
-  vim.api.nvim_buf_set_name(buf, 'GitGraph')
+  pcall(vim.api.nvim_buf_set_name, buf, 'GitGraph')
 
   local options = {
     'foldcolumn=0',
