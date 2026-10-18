@@ -633,7 +633,16 @@ local function graph_to_lines(options, graph, sym, fields, commits)
         local timestamp = c.author_date
         local author = c.author_name
 
-        local branch_names = #c.branch_names > 0 and ('(%s)'):format(table.concat(c.branch_names, ' | ')) or nil
+        local branch_names = nil
+        if #c.branch_names > 0 then
+          local cleaned = {}
+          for _, b in ipairs(c.branch_names) do
+            local clean_b = b:gsub('HEAD %-> ', '')
+            -- shorten origin/main or similar if desired, or keep as is with  icon
+            cleaned[#cleaned + 1] = (' %s'):format(clean_b)
+          end
+          branch_names = table.concat(cleaned, ' | ')
+        end
 
         local is_head = false
         if not head_found then
@@ -669,13 +678,62 @@ local function graph_to_lines(options, graph, sym, fields, commits)
         for _, name in ipairs(fields) do
           local value = items[name]
           if value then
-            highlights[#highlights + 1] = {
-              hg = ITEM_HGS[name].name,
-              row = idx,
-              start = offset,
-              stop = offset + #value,
-            }
-            add_to_row(value)
+            if name == 'branch_name' then
+              -- We render branch name as bubble with branch color background and half-circles:  + branch_name + 
+              local left_cap = ''
+              local right_cap = ''
+              -- Find the lane/column of this commit
+              local col = 1
+              for ci = 1, #proper_row.cells do
+                if proper_row.cells[ci].commit and proper_row.cells[ci].commit.hash == c.hash then
+                  col = ci
+                  break
+                end
+              end
+              local branch_color_idx = ((col - 1) / 2) % 5 + 1
+              local branch_color_hg = 'GitGraphBranch' .. tostring(branch_color_idx)
+
+              -- Define unique highlight group for the branch badge text with background equal to the branch color
+              local badge_hg_name = 'GitGraphBranchBadge' .. branch_color_idx
+              local existing_badge = vim.api.nvim_get_hl(0, { name = badge_hg_name })
+              if vim.tbl_isempty(existing_badge) then
+                local branch_hl = vim.api.nvim_get_hl(0, { name = branch_color_hg })
+                local fg_color = branch_hl.fg and string.format('#%06x', branch_hl.fg) or '#ebdbb2'
+                vim.api.nvim_set_hl(0, badge_hg_name, { fg = '#1d2021', bg = fg_color, bold = true, default = true })
+              end
+
+              highlights[#highlights + 1] = {
+                hg = branch_color_hg,
+                row = idx,
+                start = offset,
+                stop = offset + #left_cap,
+              }
+              add_to_row(left_cap)
+
+              highlights[#highlights + 1] = {
+                hg = badge_hg_name,
+                row = idx,
+                start = offset,
+                stop = offset + #value,
+              }
+              add_to_row(value)
+
+              highlights[#highlights + 1] = {
+                hg = branch_color_hg,
+                row = idx,
+                start = offset,
+                stop = offset + #right_cap,
+              }
+              add_to_row(right_cap)
+            else
+              highlights[#highlights + 1] = {
+                hg = ITEM_HGS[name].name,
+                row = idx,
+                start = offset,
+                stop = offset + #value,
+              }
+              add_to_row(value)
+            end
           end
         end
 

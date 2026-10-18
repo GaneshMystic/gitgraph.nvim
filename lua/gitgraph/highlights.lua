@@ -9,7 +9,7 @@ M.ITEM_HGS = {
   hash = { name = 'GitGraphHash', fg = '#b16286' },
   timestamp = { name = 'GitGraphTimestamp', fg = '#98971a' },
   author = { name = 'GitGraphAuthor', fg = '#458588' },
-  branch_name = { name = 'GitGraphBranchName', fg = '#d5651c' },
+  branch_name = { name = 'GitGraphBranchName', fg = '#ebdbb2', bg = '#3c3836' },
   tag = { name = 'GitGraphBranchTag', fg = '#d79921' },
   message = { name = 'GitGraphBranchMsg', fg = '#339921' },
 }
