@@ -311,6 +311,7 @@ function M.graph_to_lines(options, graph, sym, fields, commits)
           ['author'] = author,
           ['branch_name'] = '',
           ['tag'] = '',
+          ['message'] = c.msg,
         }
 
         local pad_size = padding - #proper_row.cells
@@ -347,17 +348,14 @@ function M.graph_to_lines(options, graph, sym, fields, commits)
               }
             end
             add_to_row(badge_str)
-          else
-            local value = items[name]
-            if value then
-              highlights_arr[#highlights_arr + 1] = {
-                hg = ITEM_HGS[name].name,
-                row = idx,
-                start = offset,
-                stop = offset + #value,
-              }
-              add_to_row(value .. ' ')
-            end
+          elseif name == 'message' then
+            highlights_arr[#highlights_arr + 1] = {
+              start = offset,
+              stop = offset + #c.msg,
+              row = idx,
+              hg = ITEM_HGS['message'].name,
+            }
+            add_to_row(c.msg)
           end
         end
 
@@ -387,14 +385,37 @@ function M.graph_to_lines(options, graph, sym, fields, commits)
           add_to_row((' '):rep(padding - #proper_row.cells))
           add_to_row((' '):rep(7))
 
-          highlights_arr[#highlights_arr + 1] = {
-            start = offset,
-            stop = offset + #c.msg,
-            row = idx,
-            hg = ITEM_HGS['message'].name,
+          local items = {
+            ['hash'] = c.hash:sub(1, 7),
+            ['timestamp'] = c.author_date,
+            ['author'] = c.author_name,
+            ['branch_name'] = '',
+            ['tag'] = '',
+            ['message'] = c.msg,
           }
 
-          add_to_row(c.msg)
+          for _, name in ipairs(fields) do
+            if name == 'hash' or name == 'timestamp' or name == 'author' then
+              local value = items[name]
+              if value then
+                highlights_arr[#highlights_arr + 1] = {
+                  hg = ITEM_HGS[name].name,
+                  row = idx,
+                  start = offset,
+                  stop = offset + #value,
+                }
+                add_to_row(value .. ' ')
+              end
+            -- elseif name == 'message' then
+            --   highlights_arr[#highlights_arr + 1] = {
+            --     start = offset,
+            --     stop = offset + #c.msg,
+            --     row = idx,
+            --     hg = ITEM_HGS['message'].name,
+            --   }
+            --   add_to_row(c.msg)
+            end
+          end
         end
       end
 

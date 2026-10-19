@@ -26,7 +26,7 @@ local log = require('gitgraph.log')
 ---@field GLRUCL string
 ---@field GLRUCR string
 
----@alias I.GGVarName "hash" | "timestamp" | "author" | "branch_name" | "tag" | "message"
+---@alias I.GGVarName "hash" | "timestamp" | "author" | "branch_name" | "tag" | "message" 
 
 ---@class I.GGFormat
 ---@field timestamp string
@@ -85,7 +85,7 @@ M.defaults = {
   },
   format = {
     timestamp = '%d %b %Y %H:%M',
-    fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag' },
+    fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag', 'message' },
   },
   log_level = vim.log.levels.ERROR,
 }
