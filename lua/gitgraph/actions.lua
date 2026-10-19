@@ -3,6 +3,83 @@ local config = require('gitgraph').config
 
 local M = {}
 
+--- Execute a command interactively in a floating terminal window
+--- This ensures SSH key passphrases, credentials, and pinentry prompts work seamlessly and securely.
+---@param cmd string[]
+---@param title string
+---@param on_done? fun(success: boolean)
+function M.run_interactive(cmd, title, on_done)
+  local width = math.min(math.floor(vim.o.columns * 0.8), 100)
+  local height = math.min(math.floor(vim.o.lines * 0.5), 20)
+  local row = math.floor((vim.o.lines - height) / 2)
+  local col = math.floor((vim.o.columns - width) / 2)
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = 'editor',
+    row = row,
+    col = col,
+    width = width,
+    height = height,
+    style = 'minimal',
+    border = 'rounded',
+    title = ' ' .. title .. ' ',
+    title_pos = 'center',
+  })
+
+  local success = false
+  local full_cmd = type(cmd) == 'table' and table.concat(cmd, ' ') or cmd
+
+  vim.fn.termopen(full_cmd, {
+    on_exit = function(_, exit_code)
+      success = (exit_code == 0)
+      vim.schedule(function()
+        if success then
+          if vim.api.nvim_win_is_valid(win) then
+            vim.api.nvim_win_close(win, true)
+          end
+          if vim.api.nvim_buf_is_valid(buf) then
+            vim.api.nvim_buf_delete(buf, { force = true })
+          end
+          if on_done then
+            on_done(true)
+          end
+        else
+          vim.notify('[gitgraph] ' .. title .. ' exited with code ' .. tostring(exit_code) .. '. Press <q> or <Enter> in the terminal to close.', vim.log.levels.WARN)
+          -- Map q and <CR> to close the window on failure so user can read the error message
+          if vim.api.nvim_buf_is_valid(buf) then
+            vim.keymap.set('n', 'q', function()
+              if vim.api.nvim_win_is_valid(win) then
+                vim.api.nvim_win_close(win, true)
+              end
+              if vim.api.nvim_buf_is_valid(buf) then
+                vim.api.nvim_buf_delete(buf, { force = true })
+              end
+              if on_done then
+                on_done(false)
+              end
+            end, { buffer = buf, nowait = true })
+            vim.keymap.set('n', '<CR>', function()
+              if vim.api.nvim_win_is_valid(win) then
+                vim.api.nvim_win_close(win, true)
+              end
+              if vim.api.nvim_buf_is_valid(buf) then
+                vim.api.nvim_buf_delete(buf, { force = true })
+              end
+              if on_done then
+                on_done(false)
+              end
+            end, { buffer = buf, nowait = true })
+          end
+        end
+      end)
+    end,
+  })
+
+  -- Automatically enter terminal insert mode so user can type passphrase / key prompt immediately
+  vim.cmd('startinsert')
+end
+
 --- Execute a git command asynchronously or synchronously
 ---@param args string[]
 ---@param opts? { on_success?: fun(out: string), on_error?: fun(err: string), silent?: boolean }
@@ -89,17 +166,15 @@ function M.checkout(target, on_done, opts)
   if opts.pull then
     M.run({ 'checkout', target }, {
       on_success = function()
-        M.run({ 'pull' }, {
-          on_success = function()
+        local git_cmd = (config and config.git_cmd) or 'git'
+        M.run_interactive({ git_cmd, 'pull' }, 'Git Pull (' .. target .. ')', function(ok)
+          if ok then
             vim.notify('[gitgraph] Checked out and pulled: ' .. target, vim.log.levels.INFO)
-            on_done()
-          end,
-          on_error = function()
-            -- If git pull fails (e.g. no tracking branch), notify checked out
-            vim.notify('[gitgraph] Checked out ' .. target .. ' (no upstream tracking branch or pull failed)', vim.log.levels.INFO)
-            on_done()
-          end,
-        })
+          else
+            vim.notify('[gitgraph] Checked out ' .. target .. ' (pull had errors or cancelled)', vim.log.levels.WARN)
+          end
+          on_done()
+        end)
       end,
     })
     return
@@ -128,12 +203,15 @@ function M.checkout(target, on_done, opts)
               if choice:match('^1') then
                 M.run({ 'checkout', target }, {
                   on_success = function()
-                    M.run({ 'pull' }, {
-                      on_success = function()
+                    local git_cmd = (config and config.git_cmd) or 'git'
+                    M.run_interactive({ git_cmd, 'pull' }, 'Git Pull (' .. target .. ')', function(ok)
+                      if ok then
                         vim.notify('[gitgraph] Checked out and pulled: ' .. target, vim.log.levels.INFO)
-                        on_done()
-                      end,
-                    })
+                      else
+                        vim.notify('[gitgraph] Checked out ' .. target .. ' (pull had errors or cancelled)', vim.log.levels.WARN)
+                      end
+                      on_done()
+                    end)
                   end,
                 })
               else
@@ -224,12 +302,15 @@ function M.add_tag(commit_hash, push_after, on_done)
       M.run(args, {
         on_success = function()
           if push_after then
-            M.run({ 'push', 'origin', tag_name }, {
-              on_success = function()
+            local git_cmd = (config and config.git_cmd) or 'git'
+            M.run_interactive({ git_cmd, 'push', 'origin', tag_name }, 'Git Push Tag (' .. tag_name .. ')', function(ok)
+              if ok then
                 vim.notify('[gitgraph] Added and pushed tag: ' .. tag_name, vim.log.levels.INFO)
-                on_done()
-              end,
-            })
+              else
+                vim.notify('[gitgraph] Added tag ' .. tag_name .. ' (push failed or cancelled)', vim.log.levels.WARN)
+              end
+              on_done()
+            end)
           else
             vim.notify('[gitgraph] Added tag: ' .. tag_name, vim.log.levels.INFO)
             on_done()
@@ -336,24 +417,30 @@ end
 ---@param branch string
 ---@param on_done fun()
 function M.push(branch, on_done)
-  M.run({ 'push', 'origin', branch }, {
-    on_success = function()
+  local git_cmd = (config and config.git_cmd) or 'git'
+  M.run_interactive({ git_cmd, 'push', 'origin', branch }, 'Git Push (' .. branch .. ')', function(ok)
+    if ok then
       vim.notify('[gitgraph] Pushed ' .. branch .. ' to origin', vim.log.levels.INFO)
-      on_done()
-    end,
-  })
+    else
+      vim.notify('[gitgraph] Push failed or cancelled for ' .. branch, vim.log.levels.WARN)
+    end
+    on_done()
+  end)
 end
 
 --- Pull branch
 ---@param branch string
 ---@param on_done fun()
 function M.pull(branch, on_done)
-  M.run({ 'pull', 'origin', branch }, {
-    on_success = function()
+  local git_cmd = (config and config.git_cmd) or 'git'
+  M.run_interactive({ git_cmd, 'pull', 'origin', branch }, 'Git Pull (' .. branch .. ')', function(ok)
+    if ok then
       vim.notify('[gitgraph] Pulled ' .. branch .. ' from origin', vim.log.levels.INFO)
-      on_done()
-    end,
-  })
+    else
+      vim.notify('[gitgraph] Pull failed or cancelled for ' .. branch, vim.log.levels.WARN)
+    end
+    on_done()
+  end)
 end
 
 --- Delete branch
