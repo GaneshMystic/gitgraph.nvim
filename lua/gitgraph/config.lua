@@ -48,10 +48,10 @@ local M = {}
 M.defaults = {
   git_cmd = "git",
   symbols = {
-    merge_commit = 'M',
-    commit = '*',
-    merge_commit_end = 'M',
-    commit_end = '*',
+    merge_commit = "",
+    commit = "",
+    merge_commit_end = "",
+    commit_end = "",
 
     -- Advanced symbols
     GVER = '│',
