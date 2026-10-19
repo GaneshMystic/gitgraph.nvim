@@ -41,13 +41,17 @@ local log = require('gitgraph.log')
 ---@field checkout? string | string[]
 ---@field close? string | string[]
 ---@field create_branch? string | string[]
+---@field create_branch_checkout? string | string[]
 ---@field push? string | string[]
 ---@field pull? string | string[]
 ---@field add_tag? string | string[]
+---@field add_tag_push? string | string[]
 ---@field cherry_pick? string | string[]
+---@field cherry_pick_commit? string | string[]
 ---@field revert? string | string[]
 ---@field reset? string | string[]
 ---@field merge? string | string[]
+---@field merge_commit? string | string[]
 ---@field rebase? string | string[]
 ---@field refresh? string | string[]
 ---@field copy_hash? string | string[]
@@ -94,17 +98,21 @@ M.defaults = {
     GLRUCR = '┴',
   },
   keymaps = {
-    context_menu = { '<CR>', 'm', '<Space>' },
+    context_menu = { '<CR>', '<Space>' },
     checkout = 'C',
     close = { 'x', 'q' },
-    create_branch = 'a',
-    push = 'p',
-    pull = 'P',
-    add_tag = 't',
-    cherry_pick = 'c',
+    create_branch = 'A',
+    create_branch_checkout = 'a',
+    push = 'gp',
+    pull = 'gP',
+    add_tag = 'T',
+    add_tag_push = 't',
+    cherry_pick = 'p',
+    cherry_pick_commit = 'P',
+    merge = 'm',
+    merge_commit = 'M',
     revert = 'v',
     reset = 'r',
-    merge = 'M',
     rebase = 'R',
     refresh = 'gr',
     copy_hash = 'y',

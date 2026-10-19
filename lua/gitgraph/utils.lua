@@ -393,17 +393,83 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
     actions.checkout(target, refresh_fn)
   end, 'checkout commit/branch/tag')
 
-  -- Create branch shortcut (e.g. 'a')
+  -- Create branch and checkout (e.g. 'a')
+  bind('n', keymaps.create_branch_checkout, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
+    actions.create_branch(target, true, refresh_fn)
+  end, 'create branch and checkout')
+
+  -- Create branch only (e.g. 'A')
   bind('n', keymaps.create_branch, function()
     local ctx = get_cursor_context()
     if not ctx then
       return
     end
     local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
-    actions.create_branch(target, refresh_fn)
-  end, 'create branch')
+    actions.create_branch(target, false, refresh_fn)
+  end, 'create branch only')
 
-  -- Push branch shortcut (e.g. 'p')
+  -- Add tag and push (e.g. 't')
+  bind('n', keymaps.add_tag_push, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    actions.add_tag(ctx.commit.hash, true, refresh_fn)
+  end, 'add tag and push')
+
+  -- Add tag only (e.g. 'T')
+  bind('n', keymaps.add_tag, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    actions.add_tag(ctx.commit.hash, false, refresh_fn)
+  end, 'add tag only')
+
+  -- Cherry-pick staged / no-commit with diffview review (e.g. 'p')
+  bind('n', keymaps.cherry_pick, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    actions.cherry_pick(ctx.commit.hash, true, refresh_fn)
+  end, 'cherry pick (staged, no-commit)')
+
+  -- Cherry-pick and commit (e.g. 'P')
+  bind('n', keymaps.cherry_pick_commit, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    actions.cherry_pick(ctx.commit.hash, false, refresh_fn)
+  end, 'cherry pick and commit')
+
+  -- Merge without commit (staged only + diffview review) (e.g. 'm')
+  bind('n', keymaps.merge, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
+    actions.merge(target, true, refresh_fn)
+  end, 'merge (staged, no-commit)')
+
+  -- Merge and commit (e.g. 'M')
+  bind('n', keymaps.merge_commit, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
+    actions.merge(target, false, refresh_fn)
+  end, 'merge into HEAD')
+
+  -- Push branch shortcut (e.g. 'gp')
   bind('n', keymaps.push, function()
     local ctx = get_cursor_context()
     if not ctx then
@@ -422,7 +488,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
     end
   end, 'push branch')
 
-  -- Pull branch shortcut (e.g. 'P')
+  -- Pull branch shortcut (e.g. 'gP')
   bind('n', keymaps.pull, function()
     local ctx = get_cursor_context()
     if not ctx then
@@ -441,24 +507,6 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
     end
   end, 'pull branch')
 
-  -- Add tag shortcut (e.g. 't')
-  bind('n', keymaps.add_tag, function()
-    local ctx = get_cursor_context()
-    if not ctx then
-      return
-    end
-    actions.add_tag(ctx.commit.hash, refresh_fn)
-  end, 'add tag')
-
-  -- Cherry-pick shortcut (e.g. 'c')
-  bind('n', keymaps.cherry_pick, function()
-    local ctx = get_cursor_context()
-    if not ctx then
-      return
-    end
-    actions.cherry_pick(ctx.commit.hash, refresh_fn)
-  end, 'cherry pick')
-
   -- Revert shortcut (e.g. 'v')
   bind('n', keymaps.revert, function()
     local ctx = get_cursor_context()
@@ -476,16 +524,6 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
     end
     actions.reset(ctx.commit.hash, refresh_fn)
   end, 'reset to commit')
-
-  -- Merge shortcut (e.g. 'M')
-  bind('n', keymaps.merge, function()
-    local ctx = get_cursor_context()
-    if not ctx then
-      return
-    end
-    local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
-    actions.merge(target, refresh_fn)
-  end, 'merge into HEAD')
 
   -- Rebase shortcut (e.g. 'R')
   bind('n', keymaps.rebase, function()

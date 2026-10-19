@@ -57,7 +57,14 @@ function M.get_menu_items(ctx, refresh_fn)
     table.insert(items, {
       label = '󰜛 Merge ' .. branch .. ' into HEAD',
       execute = function()
-        actions.merge(branch, refresh_fn)
+        actions.merge(branch, false, refresh_fn)
+      end,
+    })
+
+    table.insert(items, {
+      label = '󰜛 Merge ' .. branch .. ' (staged, no-commit)',
+      execute = function()
+        actions.merge(branch, true, refresh_fn)
       end,
     })
 
@@ -169,21 +176,28 @@ function M.get_menu_items(ctx, refresh_fn)
   table.insert(items, {
     label = '󰙅 Create branch at ' .. short_hash,
     execute = function()
-      actions.create_branch(c.hash, refresh_fn)
+      actions.create_branch(c.hash, true, refresh_fn)
     end,
   })
 
   table.insert(items, {
     label = '󰓻 Add tag at ' .. short_hash,
     execute = function()
-      actions.add_tag(c.hash, refresh_fn)
+      actions.add_tag(c.hash, false, refresh_fn)
     end,
   })
 
   table.insert(items, {
     label = '󰜛 Merge ' .. short_hash .. ' into HEAD',
     execute = function()
-      actions.merge(c.hash, refresh_fn)
+      actions.merge(c.hash, false, refresh_fn)
+    end,
+  })
+
+  table.insert(items, {
+    label = '󰜛 Merge ' .. short_hash .. ' (staged, no-commit)',
+    execute = function()
+      actions.merge(c.hash, true, refresh_fn)
     end,
   })
 
@@ -197,7 +211,14 @@ function M.get_menu_items(ctx, refresh_fn)
   table.insert(items, {
     label = '󰑕 Cherry-pick ' .. short_hash,
     execute = function()
-      actions.cherry_pick(c.hash, refresh_fn)
+      actions.cherry_pick(c.hash, false, refresh_fn)
+    end,
+  })
+
+  table.insert(items, {
+    label = '󰑕 Cherry-pick ' .. short_hash .. ' (staged, no-commit)',
+    execute = function()
+      actions.cherry_pick(c.hash, true, refresh_fn)
     end,
   })
 
