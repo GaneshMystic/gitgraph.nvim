@@ -356,7 +356,7 @@ function M.graph_to_lines(options, graph, sym, fields, commits)
                 start = offset,
                 stop = offset + #value,
               }
-              add_to_row(value)
+              add_to_row(value .. ' ')
             end
           end
         end

@@ -6,12 +6,12 @@ local M = {}
 
 ---@type table<string, I.HighlightGroup>
 M.ITEM_HGS = {
-  hash = { name = 'GitGraphHash', fg = '#b16286' },
-  timestamp = { name = 'GitGraphTimestamp', fg = '#98971a' },
-  author = { name = 'GitGraphAuthor', fg = '#458588' },
-  branch_name = { name = 'GitGraphBranchName', fg = '#d5651c' },
-  tag = { name = 'GitGraphBranchTag', fg = '#d79921' },
-  message = { name = 'GitGraphBranchMsg', fg = '#339921' },
+  hash = { name = 'GitGraphHash', fg = '#5c454f' },
+  timestamp = { name = 'GitGraphTimestamp', fg = '#6d6d2e' },
+  author = { name = 'GitGraphAuthor', fg = '#255256' },
+  branch_name = { name = 'GitGraphBranchName', fg = '#4ec9b0' },
+  tag = { name = 'GitGraphBranchTag', fg = '#dcdcaa' },
+  message = { name = 'GitGraphBranchMsg', fg = '#b6d6cf' },
 }
 
 ---@type I.HighlightGroup[]
