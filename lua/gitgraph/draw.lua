@@ -5,7 +5,35 @@ local core = require('gitgraph.core')
 local M = {
   options = nil,
   args = nil,
+  current_limit = nil,
+  has_more = false,
+  is_loading = false,
+  load_more_line = nil,
 }
+
+--- Load more commits and populate the list further
+function M.load_more()
+  if M.is_loading or not M.has_more then
+    return
+  end
+  M.is_loading = true
+
+  local config = require('gitgraph').config
+  local step = (M.options and M.options.page_size) or 50
+  M.current_limit = (M.current_limit or 50) + step
+
+  local new_args = vim.deepcopy(M.args or {})
+  new_args.max_count = M.current_limit
+
+  vim.notify('[gitgraph] Loading more commits...', vim.log.levels.INFO)
+
+  -- Preserve cursor position so the view doesn't jump unexpectedly
+  local cur_win = vim.api.nvim_get_current_win()
+  local prev_cursor = pcall(vim.api.nvim_win_get_cursor, cur_win) and vim.api.nvim_win_get_cursor(cur_win) or nil
+
+  M.draw(config, M.options or {}, new_args, { preserve_cursor = true, prev_cursor = prev_cursor })
+  M.is_loading = false
+end
 
 --- Redraw graph with current options and args
 function M.refresh()
@@ -42,10 +70,17 @@ end
 ---@param config I.GGConfig
 ---@param options I.DrawOptions
 ---@param args I.GitLogArgs
-function M.draw(config, options, args)
+---@param extra? { preserve_cursor?: boolean, prev_cursor?: integer[] }
+function M.draw(config, options, args, extra)
+  extra = extra or {}
   M.graph = {}
   M.options = options
   M.args = args
+
+  -- Track current commit limit for lazy loading
+  if not extra.preserve_cursor then
+    M.current_limit = args.max_count or (options and options.page_size) or 50
+  end
 
   local so = os.clock()
 
@@ -94,8 +129,30 @@ function M.draw(config, options, args)
   end
 
   -- extract graph data
-  local graph, lines, highlights, head_loc = core.gitgraph(config, options, args)
+  local effective_args = vim.deepcopy(args or {})
+  if M.current_limit then
+    effective_args.max_count = M.current_limit
+  end
+
+  local graph, lines, highlights, head_loc, total_loaded = core.gitgraph(config, options, effective_args)
   M.graph = graph
+
+  -- Check if more commits could be available
+  M.has_more = (M.current_limit ~= nil) and (total_loaded >= M.current_limit)
+
+  if M.has_more then
+    local load_more_text = '  󰑖 -- Load more commits (hover or place cursor here to populate) --'
+    lines[#lines + 1] = load_more_text
+    M.load_more_line = #lines
+    highlights[#highlights + 1] = {
+      hg = 'GitGraphLoadMore',
+      row = #lines,
+      start = 2,
+      stop = #load_more_text,
+    }
+  else
+    M.load_more_line = nil
+  end
 
   local start = os.clock()
   -- put graph data in buffer
@@ -124,12 +181,35 @@ function M.draw(config, options, args)
   end
 
   do
-    local cursor_line = head_loc
-    vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
+    if extra.preserve_cursor and extra.prev_cursor then
+      local target_line = math.min(extra.prev_cursor[1], #lines)
+      pcall(vim.api.nvim_win_set_cursor, 0, { target_line, extra.prev_cursor[2] or 0 })
+    else
+      local cursor_line = head_loc or 1
+      vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
+    end
   end
 
   utils.apply_buffer_options(buf)
   utils.apply_buffer_mappings(buf, M.graph, config, M.refresh)
+
+  -- Setup auto-trigger for load more when cursor is placed on or reaches the load-more line
+  local augroup_name = 'GitGraphLoadMore_' .. buf
+  local augroup = vim.api.nvim_create_augroup(augroup_name, { clear = true })
+  vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorHold' }, {
+    group = augroup,
+    buffer = buf,
+    callback = function()
+      if not M.has_more or M.is_loading or not M.load_more_line then
+        return
+      end
+      local cursor = vim.api.nvim_win_get_cursor(0)
+      if cursor[1] >= M.load_more_line then
+        M.load_more()
+      end
+    end,
+  })
+
   local dur = os.clock() - start
   log.info('rest dur:', dur * 1000, 'ms')
 

@@ -286,6 +286,9 @@ end
 function M.get_commit_from_row(graph, r)
   -- trick to map both the commit row and the message row to the provided commit
   local row = 2 * (math.floor((r - 1) / 2)) + 1 -- 1 1 3 3 5 5 7 7
+  if not graph[row] then
+    return nil
+  end
   local commit = graph[row].commit
   return commit
 end
