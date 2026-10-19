@@ -7,6 +7,7 @@ local renderer = require('gitgraph.renderer')
 ---@class I.DrawOptions
 ---@field mode? 'debug' | 'test'
 ---@field pretty? boolean
+---@field page_size? integer
 
 ---@class I.Highlight
 ---@field hg string -- NOTE: fine to use string since lua internalizes strings
@@ -29,6 +30,7 @@ local M = {}
 ---@return string[]
 ---@return I.Highlight[]
 ---@return integer?
+---@return integer # total raw commits returned by git
 function M.gitgraph(config, options, args)
   --- depends on `git`
   local data = require('gitgraph.git').git_log_pretty(args, config.format.timestamp)
@@ -39,7 +41,7 @@ function M.gitgraph(config, options, args)
   local dur = os.clock() - start
   log.info('_gitgraph dur:', dur * 1000, 'ms')
 
-  return graph, lines, highlights, head_loc
+  return graph, lines, highlights, head_loc, #data
 end
 
 ---@param raw_commits I.RawCommit[]

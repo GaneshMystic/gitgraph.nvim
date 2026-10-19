@@ -286,6 +286,9 @@ end
 function M.get_commit_from_row(graph, r)
   -- trick to map both the commit row and the message row to the provided commit
   local row = 2 * (math.floor((r - 1) / 2)) + 1 -- 1 1 3 3 5 5 7 7
+  if not graph[row] then
+    return nil
+  end
   local commit = graph[row].commit
   return commit
 end
@@ -308,20 +311,52 @@ end
 
 ---@param buf_id integer
 ---@param graph I.Row[]
----@param hooks I.Hooks
-function M.apply_buffer_mappings(buf_id, graph, hooks)
-  vim.keymap.set('n', '<CR>', function()
-    local row = vim.api.nvim_win_get_cursor(0)[1]
+---@param config I.GGConfig
+---@param refresh_fn? fun()
+function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
+  local menu = require('gitgraph.menu')
+  local actions = require('gitgraph.actions')
+  local hooks = config.hooks or {}
+  local keymaps = config.keymaps or {}
+  refresh_fn = refresh_fn or function() end
+
+  --- Helper to resolve context at current cursor row/col
+  local function get_cursor_context()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local row = cursor[1]
+    local col = cursor[2]
     local commit = M.get_commit_from_row(graph, row)
-    if commit then
-      hooks.on_select_commit(commit)
+    if not commit then
+      return nil
     end
-  end, { buffer = buf_id, desc = 'select commit under cursor' })
+    local line_str = vim.api.nvim_get_current_line()
+    return menu.resolve_context(commit, col, line_str)
+  end
 
-  vim.keymap.set('v', '<CR>', function()
-    -- make sure visual selection is done
+  --- Helper to bind key or list of keys
+  local function bind(modes, keys, callback, desc)
+    if not keys then
+      return
+    end
+    if type(keys) == 'string' then
+      keys = { keys }
+    end
+    for _, key in ipairs(keys) do
+      if key and key ~= '' then
+        vim.keymap.set(modes, key, callback, { buffer = buf_id, desc = 'gitgraph: ' .. desc })
+      end
+    end
+  end
+
+  -- Context Menu triggers (defaults to <CR>, 'm', '<Space>')
+  local function open_context_menu_action()
+    menu.open_context_menu(graph, refresh_fn)
+  end
+  bind('n', keymaps.context_menu, open_context_menu_action, 'open context menu')
+
+  -- Visual context menu
+  bind('v', keymaps.context_menu or keymaps.create_branch or 'a', function()
     vim.cmd('noau normal! "vy"')
-
     local start_row = vim.fn.getpos("'<")[2]
     local end_row = vim.fn.getpos("'>")[2]
 
@@ -329,9 +364,282 @@ function M.apply_buffer_mappings(buf_id, graph, hooks)
     local from_commit = M.get_commit_from_row(graph, end_row)
 
     if from_commit and to_commit then
-      hooks.on_select_range_commit(from_commit, to_commit)
+      menu.open_range_menu(from_commit, to_commit, refresh_fn)
     end
-  end, { buffer = buf_id, desc = 'select range of commit' })
+  end, 'range action menu')
+
+  -- Visual <CR>: Trigger range hook (diffview) if <CR> not mapped to context_menu or if explicit
+  vim.keymap.set('v', '<CR>', function()
+    vim.cmd('noau normal! "vy"')
+    local start_row = vim.fn.getpos("'<")[2]
+    local end_row = vim.fn.getpos("'>")[2]
+
+    local to_commit = M.get_commit_from_row(graph, start_row)
+    local from_commit = M.get_commit_from_row(graph, end_row)
+
+    if from_commit and to_commit then
+      if hooks.on_select_range_commit then
+        hooks.on_select_range_commit(from_commit, to_commit)
+      else
+        menu.open_range_menu(from_commit, to_commit, refresh_fn)
+      end
+    end
+  end, { buffer = buf_id, desc = 'gitgraph: select range of commit' })
+
+  -- Checkout commit / branch without pulling (e.g. 'C')
+  bind('n', keymaps.checkout, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    if ctx.type == 'uncommitted' then
+      vim.notify('[gitgraph] Cannot checkout uncommitted changes', vim.log.levels.WARN)
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or (ctx.type == 'tag' and ctx.tag) or ctx.commit.hash
+    actions.checkout(target, refresh_fn, { no_pull = true })
+  end, 'checkout commit/branch without pulling')
+
+  -- Checkout and pull changes (e.g. 'c')
+  bind('n', keymaps.checkout_pull, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    if ctx.type == 'uncommitted' then
+      vim.notify('[gitgraph] Cannot checkout uncommitted changes', vim.log.levels.WARN)
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or (ctx.type == 'tag' and ctx.tag) or ctx.commit.hash
+    actions.checkout(target, refresh_fn, { pull = true })
+  end, 'checkout and pull changes')
+
+  -- Difference view (e.g. 'd')
+  bind('n', keymaps.diffview, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    if ctx.type == 'uncommitted' then
+      actions.view_diff()
+    elseif ctx.type == 'branch' then
+      actions.view_diff(ctx.branch)
+    elseif ctx.type == 'tag' then
+      actions.view_diff(ctx.tag)
+    elseif ctx.commit then
+      actions.view_diff(ctx.commit.hash)
+    end
+  end, 'difference view (diffview)')
+
+  -- Create branch and checkout (e.g. 'a')
+  bind('n', keymaps.create_branch_checkout, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    if ctx.type == 'uncommitted' then
+      vim.notify('[gitgraph] Cannot create branch from uncommitted changes directly', vim.log.levels.WARN)
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
+    actions.create_branch(target, true, refresh_fn)
+  end, 'create branch and checkout')
+
+  -- Create branch only (e.g. 'A')
+  bind('n', keymaps.create_branch, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    if ctx.type == 'uncommitted' then
+      vim.notify('[gitgraph] Cannot create branch from uncommitted changes directly', vim.log.levels.WARN)
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
+    actions.create_branch(target, false, refresh_fn)
+  end, 'create branch only')
+
+  -- Add tag and push (e.g. 't')
+  bind('n', keymaps.add_tag_push, function()
+    local ctx = get_cursor_context()
+    if not ctx or ctx.type == 'uncommitted' then
+      return
+    end
+    actions.add_tag(ctx.commit.hash, true, refresh_fn)
+  end, 'add tag and push')
+
+  -- Add tag only (e.g. 'T')
+  bind('n', keymaps.add_tag, function()
+    local ctx = get_cursor_context()
+    if not ctx or ctx.type == 'uncommitted' then
+      return
+    end
+    actions.add_tag(ctx.commit.hash, false, refresh_fn)
+  end, 'add tag only')
+
+  -- Cherry-pick staged / no-commit with diffview review (e.g. 'p')
+  bind('n', keymaps.cherry_pick, function()
+    local ctx = get_cursor_context()
+    if not ctx or ctx.type == 'uncommitted' then
+      return
+    end
+    actions.cherry_pick(ctx.commit.hash, true, refresh_fn)
+  end, 'cherry pick (staged, no-commit)')
+
+  -- Cherry-pick and commit (e.g. 'P')
+  bind('n', keymaps.cherry_pick_commit, function()
+    local ctx = get_cursor_context()
+    if not ctx or ctx.type == 'uncommitted' then
+      return
+    end
+    actions.cherry_pick(ctx.commit.hash, false, refresh_fn)
+  end, 'cherry pick and commit')
+
+  -- Merge without commit (staged only + diffview review) (e.g. 'm')
+  bind('n', keymaps.merge, function()
+    local ctx = get_cursor_context()
+    if not ctx or ctx.type == 'uncommitted' then
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
+    actions.merge(target, true, refresh_fn)
+  end, 'merge (staged, no-commit)')
+
+  -- Merge and commit (e.g. 'M')
+  bind('n', keymaps.merge_commit, function()
+    local ctx = get_cursor_context()
+    if not ctx or ctx.type == 'uncommitted' then
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
+    actions.merge(target, false, refresh_fn)
+  end, 'merge into HEAD')
+
+  -- Push branch shortcut (e.g. 'gp')
+  bind('n', keymaps.push, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    if ctx.type == 'branch' and not ctx.is_remote then
+      actions.push(ctx.branch, refresh_fn)
+    else
+      actions.get_current_branch(function(branch)
+        if branch and branch ~= '' then
+          actions.push(branch, refresh_fn)
+        else
+          vim.notify('[gitgraph] Not on a named branch or detached HEAD', vim.log.levels.WARN)
+        end
+      end)
+    end
+  end, 'push branch')
+
+  -- Pull branch shortcut (e.g. 'gP')
+  bind('n', keymaps.pull, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    if ctx.type == 'branch' and not ctx.is_remote then
+      actions.pull(ctx.branch, refresh_fn)
+    else
+      actions.get_current_branch(function(branch)
+        if branch and branch ~= '' then
+          actions.pull(branch, refresh_fn)
+        else
+          vim.notify('[gitgraph] Not on a named branch or detached HEAD', vim.log.levels.WARN)
+        end
+      end)
+    end
+  end, 'pull branch')
+
+  -- Revert shortcut (e.g. 'v')
+  bind('n', keymaps.revert, function()
+    local ctx = get_cursor_context()
+    if not ctx or ctx.type == 'uncommitted' then
+      return
+    end
+    actions.revert(ctx.commit.hash, refresh_fn)
+  end, 'revert commit')
+
+  -- Reset shortcut (e.g. 'r')
+  bind('n', keymaps.reset, function()
+    local ctx = get_cursor_context()
+    if not ctx or ctx.type == 'uncommitted' then
+      return
+    end
+    actions.reset(ctx.commit.hash, refresh_fn)
+  end, 'reset to commit')
+
+  -- Rebase shortcut (e.g. 'R')
+  bind('n', keymaps.rebase, function()
+    local ctx = get_cursor_context()
+    if not ctx or ctx.type == 'uncommitted' then
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
+    actions.rebase(target, refresh_fn)
+  end, 'rebase HEAD onto commit/branch')
+
+  -- Close view shortcut (e.g. 'x', 'q')
+  bind('n', keymaps.close, function()
+    require('gitgraph.draw').close()
+  end, 'close gitgraph')
+
+  -- Refresh graph shortcut (e.g. 'gr')
+  bind('n', keymaps.refresh, function()
+    refresh_fn()
+  end, 'refresh graph')
+
+  -- Copy commit hash (e.g. 'y')
+  bind('n', keymaps.copy_hash, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    if ctx.type == 'branch' then
+      actions.copy_to_clipboard(ctx.branch, 'branch name')
+    elseif ctx.type == 'tag' then
+      actions.copy_to_clipboard(ctx.tag, 'tag name')
+    elseif ctx.type == 'uncommitted' then
+      vim.notify('[gitgraph] No commit hash for uncommitted changes', vim.log.levels.INFO)
+    else
+      actions.copy_to_clipboard(ctx.commit.hash, 'commit hash')
+    end
+  end, 'copy hash or ref name')
+
+  -- Copy commit message (e.g. 'Y')
+  bind('n', keymaps.copy_message, function()
+    local ctx = get_cursor_context()
+    if ctx and ctx.commit then
+      actions.copy_to_clipboard(ctx.commit.msg, 'commit message')
+    end
+  end, 'copy commit message')
+
+  -- Mouse support: Right Click opens context menu at clicked position
+  vim.keymap.set('n', '<RightMouse>', function()
+    local mouse = vim.fn.getmousepos()
+    if mouse and mouse.winid == vim.api.nvim_get_current_win() then
+      vim.api.nvim_win_set_cursor(0, { mouse.line, mouse.column - 1 })
+      menu.open_context_menu(graph, refresh_fn, { row = mouse.line, col = mouse.column - 1 })
+    end
+  end, { buffer = buf_id, desc = 'gitgraph: mouse right click context menu' })
+
+  -- Double click opens commit diff / action
+  vim.keymap.set('n', '<2-LeftMouse>', function()
+    local mouse = vim.fn.getmousepos()
+    if mouse and mouse.winid == vim.api.nvim_get_current_win() then
+      vim.api.nvim_win_set_cursor(0, { mouse.line, mouse.column - 1 })
+      local commit = M.get_commit_from_row(graph, mouse.line)
+      if commit and commit.is_uncommitted then
+        actions.view_diff()
+      elseif commit and hooks.on_select_commit then
+        hooks.on_select_commit(commit)
+      elseif commit then
+        actions.view_diff(commit.hash)
+      end
+    end
+  end, { buffer = buf_id, desc = 'gitgraph: double click select commit' })
 end
 
 ---@param cmd string

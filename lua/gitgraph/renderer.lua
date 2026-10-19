@@ -147,6 +147,10 @@ function M.graph_to_lines(options, graph, sym, fields, commits)
       return cell.commit.msg
     end
 
+    if cell.commit.is_uncommitted then
+      return sym.commit or '*'
+    end
+
     if #cell.commit.parents > 1 then
       -- merge commit
       return #cell.commit.children == 0 and sym.merge_commit_end or sym.merge_commit
@@ -190,7 +194,8 @@ function M.graph_to_lines(options, graph, sym, fields, commits)
       offset = offset + width
 
       if cell.commit then
-        local hg = 'GitGraphBranch' .. tostring(j % NUM_BRANCH_COLORS + 1)
+        local hg = cell.commit.is_uncommitted and 'GitGraphUncommitted'
+          or ('GitGraphBranch' .. tostring(j % NUM_BRANCH_COLORS + 1))
         row_hls[#row_hls + 1] = { hg = hg, row = row_idx, start = start, stop = stop }
       elseif cell.symbol == sym.GHOR then
         for k = j + 1, #row.cells do
@@ -349,11 +354,12 @@ function M.graph_to_lines(options, graph, sym, fields, commits)
             end
             add_to_row(badge_str)
           elseif name == 'message' then
+            local msg_hg = c.is_uncommitted and 'GitGraphUncommitted' or ITEM_HGS['message'].name
             highlights_arr[#highlights_arr + 1] = {
               start = offset,
               stop = offset + #c.msg,
               row = idx,
-              hg = ITEM_HGS['message'].name,
+              hg = msg_hg,
             }
             add_to_row(c.msg)
           end
@@ -381,7 +387,7 @@ function M.graph_to_lines(options, graph, sym, fields, commits)
       else
         local c = graph[idx - 1].commit
         assert(c)
-        if options.mode ~= 'debug' then
+        if options.mode ~= 'debug' and not c.is_uncommitted then
           add_to_row((' '):rep(padding - #proper_row.cells))
           add_to_row((' '):rep(7))
 
@@ -406,14 +412,6 @@ function M.graph_to_lines(options, graph, sym, fields, commits)
                 }
                 add_to_row(value .. ' ')
               end
-            -- elseif name == 'message' then
-            --   highlights_arr[#highlights_arr + 1] = {
-            --     start = offset,
-            --     stop = offset + #c.msg,
-            --     row = idx,
-            --     hg = ITEM_HGS['message'].name,
-            --   }
-            --   add_to_row(c.msg)
             end
           end
         end

@@ -86,6 +86,27 @@ function M.git_log_pretty(args, date_format)
     }
   end
 
+  -- Check for uncommitted working tree changes
+  local status_handle = io.popen(config.git_cmd .. ' status --porcelain 2>/dev/null')
+  if status_handle then
+    local status_out = status_handle:read('*a')
+    status_handle:close()
+
+    if status_out and status_out:match('%S') and #data > 0 then
+      local head_hash = data[1].hash
+      table.insert(data, 1, {
+        msg = 'Uncommitted changes',
+        branch_names = {},
+        tags = {},
+        author_date = '',
+        author_name = '',
+        hash = '*',
+        parents = { head_hash },
+        is_uncommitted = true,
+      })
+    end
+  end
+
   local dur = os.clock() - start
   log.info('cli duration:', dur * 1000, 'ms')
 

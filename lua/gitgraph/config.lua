@@ -36,10 +36,34 @@ local log = require('gitgraph.log')
 ---@field on_select_commit fun(commit: I.Commit)
 ---@field on_select_range_commit fun(from: I.Commit, to: I.Commit)
 
+---@class I.GGKeymaps
+---@field context_menu? string | string[]
+---@field checkout? string | string[]
+---@field checkout_pull? string | string[]
+---@field diffview? string | string[]
+---@field close? string | string[]
+---@field create_branch? string | string[]
+---@field create_branch_checkout? string | string[]
+---@field push? string | string[]
+---@field pull? string | string[]
+---@field add_tag? string | string[]
+---@field add_tag_push? string | string[]
+---@field cherry_pick? string | string[]
+---@field cherry_pick_commit? string | string[]
+---@field revert? string | string[]
+---@field reset? string | string[]
+---@field merge? string | string[]
+---@field merge_commit? string | string[]
+---@field rebase? string | string[]
+---@field refresh? string | string[]
+---@field copy_hash? string | string[]
+---@field copy_message? string | string[]
+
 ---@class I.GGConfig
 ---@field symbols I.GGSymbols
 ---@field format I.GGFormat
 ---@field hooks I.Hooks
+---@field keymaps I.GGKeymaps
 ---@field log_level integer
 
 local M = {}
@@ -74,6 +98,29 @@ M.defaults = {
     GLRDCR = '┬',
     GLRUCL = '┴',
     GLRUCR = '┴',
+  },
+  keymaps = {
+    context_menu = { '<CR>', '<Space>' },
+    checkout = 'C',
+    checkout_pull = 'c',
+    diffview = 'd',
+    close = { 'x', 'q' },
+    create_branch = 'A',
+    create_branch_checkout = 'a',
+    push = 'gp',
+    pull = 'gP',
+    add_tag = 'T',
+    add_tag_push = 't',
+    cherry_pick = 'p',
+    cherry_pick_commit = 'P',
+    merge = 'm',
+    merge_commit = 'M',
+    revert = 'v',
+    reset = 'r',
+    rebase = 'R',
+    refresh = 'gr',
+    copy_hash = 'y',
+    copy_message = 'Y',
   },
   hooks = {
     on_select_commit = function(commit)
