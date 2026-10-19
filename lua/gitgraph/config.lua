@@ -84,7 +84,7 @@ M.defaults = {
     end,
   },
   format = {
-    timestamp = '%H:%M:%S %d-%m-%Y',
+    timestamp = '%d %b %Y %H:%M',
     fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag' },
   },
   log_level = vim.log.levels.ERROR,
