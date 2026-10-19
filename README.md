@@ -68,29 +68,29 @@ Install with your preferred Neovim package manager.
 
 All keymaps are active inside the GitGraph buffer and fully customizable via `opts.keymaps`:
 
-| Action | Default Keymap | Description |
-| :--- | :--- | :--- |
-| **Context Menu** | `<CR>`, `<Space>` | Open context-sensitive action menu (tailored to hovered commit, branch badge, or tag) |
-| **Checkout & Pull** | `c` | Checkout branch/commit and pull latest changes from cloud |
-| **Checkout (No Pull)** | `C` | Checkout commit/branch directly without pulling changes from cloud |
-| **Difference View** | `d` | Open Diffview for current commit, branch, tag, or uncommitted changes |
-| **Create Branch & Checkout** | `a` | Create a new branch at target and switch to it immediately |
-| **Create Branch Only** | `A` | Create branch at target without switching |
-| **Add Tag & Push** | `t` | Create an annotated or lightweight tag and push it directly to remote |
-| **Add Tag Only** | `T` | Create a tag locally |
-| **Cherry-Pick (Review)** | `p` | Cherry-pick staged changes without committing (`--no-commit`) and open Diffview for review |
-| **Cherry-Pick & Commit** | `P` | Cherry-pick and commit immediately |
-| **Merge (Review)** | `m` | Merge branch/commit staged without committing (`--no-commit`) and review |
-| **Merge & Commit** | `M` | Merge commit/branch into `HEAD` directly |
-| **Rebase** | `R` | Rebase current `HEAD` onto selected commit/branch |
-| **Reset** | `r` | Reset current branch to selected commit (prompts for `--soft`, `--mixed`, or `--hard`) |
-| **Revert** | `v` | Revert selected commit |
-| **Push** | `gp` | Push branch to `origin` |
-| **Pull** | `gP` | Pull branch from `origin` |
-| **Refresh** | `gr` | Re-fetch and redraw graph |
-| **Copy Hash / Name** | `y` | Copy target commit hash or branch name to system clipboard |
-| **Copy Message** | `Y` | Copy commit message to system clipboard |
-| **Close** | `q`, `x` | Close GitGraph buffer and restore previous window layout |
+| Action                       | Default Keymap    | Description                                                                                |
+| :--------------------------- | :---------------- | :----------------------------------------------------------------------------------------- |
+| **Context Menu**             | `<CR>`, `<Space>` | Open context-sensitive action menu (tailored to hovered commit, branch badge, or tag)      |
+| **Checkout & Pull**          | `c`               | Checkout branch/commit and pull latest changes from cloud                                  |
+| **Checkout (No Pull)**       | `C`               | Checkout commit/branch directly without pulling changes from cloud                         |
+| **Difference View**          | `d`               | Open Diffview for current commit, branch, tag, or uncommitted changes                      |
+| **Create Branch & Checkout** | `a`               | Create a new branch at target and switch to it immediately                                 |
+| **Create Branch Only**       | `A`               | Create branch at target without switching                                                  |
+| **Add Tag & Push**           | `t`               | Create an annotated or lightweight tag and push it directly to remote                      |
+| **Add Tag Only**             | `T`               | Create a tag locally                                                                       |
+| **Cherry-Pick (Review)**     | `p`               | Cherry-pick staged changes without committing (`--no-commit`) and open Diffview for review |
+| **Cherry-Pick & Commit**     | `P`               | Cherry-pick and commit immediately                                                         |
+| **Merge (Review)**           | `m`               | Merge branch/commit staged without committing (`--no-commit`) and review                   |
+| **Merge & Commit**           | `M`               | Merge commit/branch into `HEAD` directly                                                   |
+| **Rebase**                   | `R`               | Rebase current `HEAD` onto selected commit/branch                                          |
+| **Reset**                    | `gr`              | Reset current branch to selected commit (prompts for `--soft`, `--mixed`, or `--hard`)     |
+| **Revert**                   | `v`               | Revert selected commit                                                                     |
+| **Push**                     | `gp`              | Push branch to `origin`                                                                    |
+| **Pull**                     | `gP`              | Pull branch from `origin`                                                                  |
+| **Refresh**                  | `r`               | Re-fetch and redraw graph                                                                  |
+| **Copy Hash / Name**         | `y`               | Copy target commit hash or branch name to system clipboard                                 |
+| **Copy Message**             | `Y`               | Copy commit message to system clipboard                                                    |
+| **Close**                    | `q`, `x`          | Close GitGraph buffer and restore previous window layout                                   |
 
 ### Mouse Support
 
@@ -176,6 +176,7 @@ require('gitgraph').setup({
 You can customize any highlight group used by `gitgraph.nvim`:
 
 ### Commit Details
+
 - `GitGraphHash`: Commit hash color.
 - `GitGraphTimestamp`: Date & timestamp display.
 - `GitGraphAuthor`: Commit author.
@@ -184,6 +185,7 @@ You can customize any highlight group used by `gitgraph.nvim`:
 - `GitGraphBranchMsg`: Commit summary message.
 
 ### Branch Lanes & Badges
+
 - `GitGraphBranch1` to `GitGraphBranch5`: Rotating colors assigned to each branch lane and connector.
 - Dynamic Powerline badge groups for each branch color index (e.g. `GitGraphBranch1Badge`, `GitGraphBranch1Cap`, `GitGraphBranch1RemoteSep`, `GitGraphRemoteBadge`, `GitGraphRemoteCap`).
 
