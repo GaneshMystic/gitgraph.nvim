@@ -2,13 +2,50 @@ local log = require('gitgraph.log')
 local utils = require('gitgraph.utils')
 local core = require('gitgraph.core')
 
-local M = {}
+local M = {
+  options = nil,
+  args = nil,
+}
+
+--- Redraw graph with current options and args
+function M.refresh()
+  local config = require('gitgraph').config
+  M.draw(config, M.options or {}, M.args or {})
+end
+
+--- Cleanly close GitGraph and restore the previous buffer/window
+function M.close()
+  local current_win = vim.api.nvim_get_current_win()
+  local current_buf = vim.api.nvim_win_get_buf(current_win)
+
+  -- If previous buffer is valid and was replaced in current window, restore it
+  if M.prev_buf and vim.api.nvim_buf_is_valid(M.prev_buf) and current_buf == M.buf then
+    pcall(vim.api.nvim_win_set_buf, current_win, M.prev_buf)
+    return
+  end
+
+  -- If opened in a dedicated split window and multiple windows exist, close it
+  if #vim.api.nvim_list_wins() > 1 then
+    pcall(vim.api.nvim_win_close, current_win, true)
+    return
+  end
+
+  -- Fallback: switch to alternate buffer or delete buffer
+  local alt_buf = vim.fn.bufnr('#')
+  if alt_buf > 0 and vim.api.nvim_buf_is_valid(alt_buf) and alt_buf ~= M.buf then
+    pcall(vim.api.nvim_win_set_buf, current_win, alt_buf)
+  else
+    pcall(vim.cmd, 'bdelete')
+  end
+end
 
 ---@param config I.GGConfig
 ---@param options I.DrawOptions
 ---@param args I.GitLogArgs
 function M.draw(config, options, args)
   M.graph = {}
+  M.options = options
+  M.args = args
 
   local so = os.clock()
 
@@ -20,6 +57,14 @@ function M.draw(config, options, args)
   if utils.check_cmd('git status') then
     log.error('does not seem to be a valid git repo')
     return
+  end
+
+  -- remember previous buffer and window to restore seamlessly on close
+  local prev_win = vim.api.nvim_get_current_win()
+  local prev_buf = vim.api.nvim_win_get_buf(prev_win)
+  if prev_buf ~= M.buf then
+    M.prev_win = prev_win
+    M.prev_buf = prev_buf
   end
 
   -- reuse or create buffer
@@ -84,7 +129,7 @@ function M.draw(config, options, args)
   end
 
   utils.apply_buffer_options(buf)
-  utils.apply_buffer_mappings(buf, M.graph, config.hooks)
+  utils.apply_buffer_mappings(buf, M.graph, config, M.refresh)
   local dur = os.clock() - start
   log.info('rest dur:', dur * 1000, 'ms')
 

@@ -124,9 +124,36 @@ For example, use **kitty** branch symbols [more detail](https://github.com/kovid
   },
 ```
 
-# Keymaps
+# Keymaps & Configuration
 
-... more keymaps to come ...
+All keyboard shortcuts are configurable via the `keymaps` option in `setup()`:
+
+```lua
+require('gitgraph').setup({
+  keymaps = {
+    context_menu = { '<CR>', 'm', '<Space>' }, -- Open context action menu
+    checkout = 'C',                            -- Checkout commit/branch/tag
+    close = { 'x', 'q' },                      -- Close GitGraph buffer/window
+    create_branch = 'a',                       -- Create branch at commit
+    push = 'p',                                -- Push branch to origin
+    pull = 'P',                                -- Pull branch from origin
+    add_tag = 't',                             -- Add tag at commit
+    cherry_pick = 'c',                         -- Cherry-pick commit
+    revert = 'v',                              -- Revert commit
+    reset = 'r',                               -- Reset current branch to commit
+    merge = 'M',                               -- Merge commit/branch into HEAD
+    rebase = 'R',                              -- Rebase HEAD onto commit/branch
+    refresh = 'gr',                            -- Refresh graph
+    copy_hash = 'y',                           -- Copy commit hash / branch name
+    copy_message = 'Y',                        -- Copy commit message
+  },
+})
+```
+
+### Mouse Controls
+- `<LeftMouse>`: Move cursor to row/column.
+- `<2-LeftMouse>` (Double click): Quick select commit / open diff (or trigger `hooks.on_select_commit`).
+- `<RightMouse>`: Open Context Action Menu directly at the clicked target (branch badge, tag, or commit).
 
 # Highlights Groups
 

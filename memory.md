@@ -16,6 +16,8 @@ Welcome! This document serves as the project memory for `gitgraph.nvim`, a Neovi
 - `lua/gitgraph/highlights.lua`: Defines highlight groups (`GitGraphHash`, `GitGraphTimestamp`, `GitGraphAuthor`, `GitGraphBranchName`, `GitGraphBranchTag`, `GitGraphBranchMsg`, and `GitGraphBranch1` through `GitGraphBranch5`).
 - `lua/gitgraph/utils.lua`: Helper functions (e.g., crossing resolution, bi-crossing detection).
 - `lua/gitgraph/tests.lua`: Test suite runner (`test()` and `random()`).
+- `lua/gitgraph/actions.lua`: Git operations executor (async checkout, branch creation, tag addition, cherry-pick, revert, reset, merge, rebase, push, pull, delete branch/tag, clipboard copying, diffview trigger).
+- `lua/gitgraph/menu.lua`: Context resolution engine (detects whether cursor/click target is commit, branch badge, or tag) and UI menu builder using `vim.ui.select`.
 - `lua/gitgraph/log.lua`: Lightweight logging utility.
 
 ## Design Decisions & Specifications
