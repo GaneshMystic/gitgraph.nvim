@@ -71,7 +71,9 @@ All keymaps are active inside the GitGraph buffer and fully customizable via `op
 | Action | Default Keymap | Description |
 | :--- | :--- | :--- |
 | **Context Menu** | `<CR>`, `<Space>` | Open context-sensitive action menu (tailored to hovered commit, branch badge, or tag) |
-| **Checkout** | `C` | Checkout commit/branch/tag (prompts to pull if local branch is behind upstream) |
+| **Checkout & Pull** | `c` | Checkout branch/commit and pull latest changes from cloud |
+| **Checkout (No Pull)** | `C` | Checkout commit/branch directly without pulling changes from cloud |
+| **Difference View** | `d` | Open Diffview for current commit, branch, tag, or uncommitted changes |
 | **Create Branch & Checkout** | `a` | Create a new branch at target and switch to it immediately |
 | **Create Branch Only** | `A` | Create branch at target without switching |
 | **Add Tag & Push** | `t` | Create an annotated or lightweight tag and push it directly to remote |
@@ -144,6 +146,8 @@ require('gitgraph').setup({
   keymaps = {
     context_menu = { '<CR>', '<Space>' },
     checkout = 'C',
+    checkout_pull = 'c',
+    diffview = 'd',
     close = { 'x', 'q' },
     create_branch = 'A',
     create_branch_checkout = 'a',

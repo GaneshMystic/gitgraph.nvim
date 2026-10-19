@@ -383,7 +383,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
     end
   end, { buffer = buf_id, desc = 'gitgraph: select range of commit' })
 
-  -- Checkout shortcut (e.g. 'C')
+  -- Checkout commit / branch without pulling (e.g. 'C')
   bind('n', keymaps.checkout, function()
     local ctx = get_cursor_context()
     if not ctx then
@@ -394,8 +394,39 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
       return
     end
     local target = (ctx.type == 'branch' and ctx.branch) or (ctx.type == 'tag' and ctx.tag) or ctx.commit.hash
-    actions.checkout(target, refresh_fn)
-  end, 'checkout commit/branch/tag')
+    actions.checkout(target, refresh_fn, { no_pull = true })
+  end, 'checkout commit/branch without pulling')
+
+  -- Checkout and pull changes (e.g. 'c')
+  bind('n', keymaps.checkout_pull, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    if ctx.type == 'uncommitted' then
+      vim.notify('[gitgraph] Cannot checkout uncommitted changes', vim.log.levels.WARN)
+      return
+    end
+    local target = (ctx.type == 'branch' and ctx.branch) or (ctx.type == 'tag' and ctx.tag) or ctx.commit.hash
+    actions.checkout(target, refresh_fn, { pull = true })
+  end, 'checkout and pull changes')
+
+  -- Difference view (e.g. 'd')
+  bind('n', keymaps.diffview, function()
+    local ctx = get_cursor_context()
+    if not ctx then
+      return
+    end
+    if ctx.type == 'uncommitted' then
+      actions.view_diff()
+    elseif ctx.type == 'branch' then
+      actions.view_diff(ctx.branch)
+    elseif ctx.type == 'tag' then
+      actions.view_diff(ctx.tag)
+    elseif ctx.commit then
+      actions.view_diff(ctx.commit.hash)
+    end
+  end, 'difference view (diffview)')
 
   -- Create branch and checkout (e.g. 'a')
   bind('n', keymaps.create_branch_checkout, function()

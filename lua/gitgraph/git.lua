@@ -92,26 +92,18 @@ function M.git_log_pretty(args, date_format)
     local status_out = status_handle:read('*a')
     status_handle:close()
 
-    if status_out and status_out:match('%S') then
-      local head_handle = io.popen(config.git_cmd .. ' rev-parse --short HEAD 2>/dev/null')
-      local head_hash = nil
-      if head_handle then
-        head_hash = vim.trim(head_handle:read('*a') or '')
-        head_handle:close()
-      end
-
-      if head_hash and head_hash ~= '' then
-        table.insert(data, 1, {
-          msg = 'Uncommitted changes',
-          branch_names = {},
-          tags = {},
-          author_date = '',
-          author_name = '',
-          hash = '*',
-          parents = { head_hash },
-          is_uncommitted = true,
-        })
-      end
+    if status_out and status_out:match('%S') and #data > 0 then
+      local head_hash = data[1].hash
+      table.insert(data, 1, {
+        msg = 'Uncommitted changes',
+        branch_names = {},
+        tags = {},
+        author_date = '',
+        author_name = '',
+        hash = '*',
+        parents = { head_hash },
+        is_uncommitted = true,
+      })
     end
   end
 

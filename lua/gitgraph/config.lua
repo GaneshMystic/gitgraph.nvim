@@ -39,6 +39,8 @@ local log = require('gitgraph.log')
 ---@class I.GGKeymaps
 ---@field context_menu? string | string[]
 ---@field checkout? string | string[]
+---@field checkout_pull? string | string[]
+---@field diffview? string | string[]
 ---@field close? string | string[]
 ---@field create_branch? string | string[]
 ---@field create_branch_checkout? string | string[]
@@ -100,6 +102,8 @@ M.defaults = {
   keymaps = {
     context_menu = { '<CR>', '<Space>' },
     checkout = 'C',
+    checkout_pull = 'c',
+    diffview = 'd',
     close = { 'x', 'q' },
     create_branch = 'A',
     create_branch_checkout = 'a',

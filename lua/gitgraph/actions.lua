@@ -68,11 +68,44 @@ function M.get_current_branch(cb)
 end
 
 --- Checkout commit, branch, or tag
---- Checks if a branch is behind its upstream tracking branch and prompts to checkout local or pull
 ---@param target string
 ---@param on_done fun()
-function M.checkout(target, on_done)
-  -- Check if target is a local branch with an upstream
+---@param opts? { pull?: boolean, no_pull?: boolean }
+function M.checkout(target, on_done, opts)
+  opts = opts or {}
+
+  -- If explicitly requested no_pull (e.g. keymap 'C'), checkout directly without pulling
+  if opts.no_pull then
+    M.run({ 'checkout', target }, {
+      on_success = function()
+        vim.notify('[gitgraph] Checked out: ' .. target, vim.log.levels.INFO)
+        on_done()
+      end,
+    })
+    return
+  end
+
+  -- If explicitly requested pull (e.g. keymap 'c'), checkout and pull if tracking branch exists
+  if opts.pull then
+    M.run({ 'checkout', target }, {
+      on_success = function()
+        M.run({ 'pull' }, {
+          on_success = function()
+            vim.notify('[gitgraph] Checked out and pulled: ' .. target, vim.log.levels.INFO)
+            on_done()
+          end,
+          on_error = function()
+            -- If git pull fails (e.g. no tracking branch), notify checked out
+            vim.notify('[gitgraph] Checked out ' .. target .. ' (no upstream tracking branch or pull failed)', vim.log.levels.INFO)
+            on_done()
+          end,
+        })
+      end,
+    })
+    return
+  end
+
+  -- Default behavior: Check if target is a local branch with an upstream
   M.run({ 'rev-parse', '--verify', 'refs/heads/' .. target }, {
     silent = true,
     on_success = function()

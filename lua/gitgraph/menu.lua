@@ -105,9 +105,16 @@ function M.get_menu_items(ctx, refresh_fn)
     local is_remote = ctx.is_remote
 
     table.insert(items, {
-      label = '󰘬 Checkout branch: ' .. branch,
+      label = '󰘬 Checkout & Pull branch: ' .. branch,
       execute = function()
-        actions.checkout(branch, refresh_fn)
+        actions.checkout(branch, refresh_fn, { pull = true })
+      end,
+    })
+
+    table.insert(items, {
+      label = '󰘬 Checkout branch (no pull): ' .. branch,
+      execute = function()
+        actions.checkout(branch, refresh_fn, { no_pull = true })
       end,
     })
 
