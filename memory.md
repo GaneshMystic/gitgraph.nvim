@@ -40,6 +40,7 @@ Multi-segment powerline badge format: `  feature  origin/main `
 - Hooks for extension (e.g., `diffview.nvim`)
 - Configurable date formats and highlight groups
 - Performant scrolling and branch crossings
+- Uncommitted changes row support on top of checked-out branch (with diffview, stash, discard actions)
 
 ### Future / Roadmap
 

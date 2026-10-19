@@ -355,10 +355,18 @@ function M.delete_tag(tag, on_done)
   })
 end
 
---- Open Diffview for commit or range
----@param from string
+--- Open Diffview for commit, range, or uncommitted changes
+---@param from? string
 ---@param to? string
 function M.view_diff(from, to)
+  if not from or from == '*' or from == '' then
+    local ok = pcall(vim.cmd, 'DiffviewOpen')
+    if not ok then
+      vim.notify('[gitgraph] diffview.nvim not found or failed to open working directory diff', vim.log.levels.WARN)
+    end
+    return
+  end
+
   if to then
     local cmd = 'DiffviewOpen ' .. from .. '~1..' .. to
     local ok = pcall(vim.cmd, cmd)

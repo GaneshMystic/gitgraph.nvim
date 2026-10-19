@@ -389,6 +389,10 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
     if not ctx then
       return
     end
+    if ctx.type == 'uncommitted' then
+      vim.notify('[gitgraph] Cannot checkout uncommitted changes', vim.log.levels.WARN)
+      return
+    end
     local target = (ctx.type == 'branch' and ctx.branch) or (ctx.type == 'tag' and ctx.tag) or ctx.commit.hash
     actions.checkout(target, refresh_fn)
   end, 'checkout commit/branch/tag')
@@ -397,6 +401,10 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
   bind('n', keymaps.create_branch_checkout, function()
     local ctx = get_cursor_context()
     if not ctx then
+      return
+    end
+    if ctx.type == 'uncommitted' then
+      vim.notify('[gitgraph] Cannot create branch from uncommitted changes directly', vim.log.levels.WARN)
       return
     end
     local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
@@ -409,6 +417,10 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
     if not ctx then
       return
     end
+    if ctx.type == 'uncommitted' then
+      vim.notify('[gitgraph] Cannot create branch from uncommitted changes directly', vim.log.levels.WARN)
+      return
+    end
     local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
     actions.create_branch(target, false, refresh_fn)
   end, 'create branch only')
@@ -416,7 +428,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
   -- Add tag and push (e.g. 't')
   bind('n', keymaps.add_tag_push, function()
     local ctx = get_cursor_context()
-    if not ctx then
+    if not ctx or ctx.type == 'uncommitted' then
       return
     end
     actions.add_tag(ctx.commit.hash, true, refresh_fn)
@@ -425,7 +437,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
   -- Add tag only (e.g. 'T')
   bind('n', keymaps.add_tag, function()
     local ctx = get_cursor_context()
-    if not ctx then
+    if not ctx or ctx.type == 'uncommitted' then
       return
     end
     actions.add_tag(ctx.commit.hash, false, refresh_fn)
@@ -434,7 +446,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
   -- Cherry-pick staged / no-commit with diffview review (e.g. 'p')
   bind('n', keymaps.cherry_pick, function()
     local ctx = get_cursor_context()
-    if not ctx then
+    if not ctx or ctx.type == 'uncommitted' then
       return
     end
     actions.cherry_pick(ctx.commit.hash, true, refresh_fn)
@@ -443,7 +455,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
   -- Cherry-pick and commit (e.g. 'P')
   bind('n', keymaps.cherry_pick_commit, function()
     local ctx = get_cursor_context()
-    if not ctx then
+    if not ctx or ctx.type == 'uncommitted' then
       return
     end
     actions.cherry_pick(ctx.commit.hash, false, refresh_fn)
@@ -452,7 +464,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
   -- Merge without commit (staged only + diffview review) (e.g. 'm')
   bind('n', keymaps.merge, function()
     local ctx = get_cursor_context()
-    if not ctx then
+    if not ctx or ctx.type == 'uncommitted' then
       return
     end
     local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
@@ -462,7 +474,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
   -- Merge and commit (e.g. 'M')
   bind('n', keymaps.merge_commit, function()
     local ctx = get_cursor_context()
-    if not ctx then
+    if not ctx or ctx.type == 'uncommitted' then
       return
     end
     local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
@@ -510,7 +522,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
   -- Revert shortcut (e.g. 'v')
   bind('n', keymaps.revert, function()
     local ctx = get_cursor_context()
-    if not ctx then
+    if not ctx or ctx.type == 'uncommitted' then
       return
     end
     actions.revert(ctx.commit.hash, refresh_fn)
@@ -519,7 +531,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
   -- Reset shortcut (e.g. 'r')
   bind('n', keymaps.reset, function()
     local ctx = get_cursor_context()
-    if not ctx then
+    if not ctx or ctx.type == 'uncommitted' then
       return
     end
     actions.reset(ctx.commit.hash, refresh_fn)
@@ -528,7 +540,7 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
   -- Rebase shortcut (e.g. 'R')
   bind('n', keymaps.rebase, function()
     local ctx = get_cursor_context()
-    if not ctx then
+    if not ctx or ctx.type == 'uncommitted' then
       return
     end
     local target = (ctx.type == 'branch' and ctx.branch) or ctx.commit.hash
@@ -555,6 +567,8 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
       actions.copy_to_clipboard(ctx.branch, 'branch name')
     elseif ctx.type == 'tag' then
       actions.copy_to_clipboard(ctx.tag, 'tag name')
+    elseif ctx.type == 'uncommitted' then
+      vim.notify('[gitgraph] No commit hash for uncommitted changes', vim.log.levels.INFO)
     else
       actions.copy_to_clipboard(ctx.commit.hash, 'commit hash')
     end
@@ -583,7 +597,9 @@ function M.apply_buffer_mappings(buf_id, graph, config, refresh_fn)
     if mouse and mouse.winid == vim.api.nvim_get_current_win() then
       vim.api.nvim_win_set_cursor(0, { mouse.line, mouse.column - 1 })
       local commit = M.get_commit_from_row(graph, mouse.line)
-      if commit and hooks.on_select_commit then
+      if commit and commit.is_uncommitted then
+        actions.view_diff()
+      elseif commit and hooks.on_select_commit then
         hooks.on_select_commit(commit)
       elseif commit then
         actions.view_diff(commit.hash)

@@ -22,6 +22,7 @@ function M.process_raw_commits(raw_commits)
       j = -1,
       parents = rc.parents,
       children = {},
+      is_uncommitted = rc.is_uncommitted,
     }
 
     sorted_commits[#sorted_commits + 1] = commit.hash

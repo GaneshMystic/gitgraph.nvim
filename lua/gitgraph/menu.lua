@@ -9,6 +9,10 @@ local M = {}
 ---@param line_str string
 ---@return { type: 'branch'|'tag'|'commit', branch?: string, is_remote?: boolean, tag?: string, commit: I.Commit }
 function M.resolve_context(commit, col, line_str)
+  if commit.is_uncommitted then
+    return { type = 'uncommitted', commit = commit }
+  end
+
   -- Check if cursor is over any tag
   if commit.tags and #commit.tags > 0 then
     for _, t in ipairs(commit.tags) do
@@ -42,6 +46,59 @@ end
 ---@return { label: string, execute: fun() }[]
 function M.get_menu_items(ctx, refresh_fn)
   local items = {}
+
+  if ctx.type == 'uncommitted' then
+    table.insert(items, {
+      label = '󰅟 View uncommitted changes (Diffview)',
+      execute = function()
+        actions.view_diff()
+      end,
+    })
+
+    table.insert(items, {
+      label = '󰜚 Stash uncommitted changes',
+      execute = function()
+        actions.run({ 'stash', 'push', '-m', 'GitGraph stash' }, {
+          on_success = function()
+            vim.notify('[gitgraph] Stashed uncommitted changes', vim.log.levels.INFO)
+            refresh_fn()
+          end,
+        })
+      end,
+    })
+
+    table.insert(items, {
+      label = '󰜚 Stash uncommitted changes (include untracked)',
+      execute = function()
+        actions.run({ 'stash', 'push', '-u', '-m', 'GitGraph stash' }, {
+          on_success = function()
+            vim.notify('[gitgraph] Stashed uncommitted & untracked changes', vim.log.levels.INFO)
+            refresh_fn()
+          end,
+        })
+      end,
+    })
+
+    table.insert(items, {
+      label = '󰆴 Discard all uncommitted changes',
+      execute = function()
+        vim.ui.select({ '1. Yes, discard changes', '2. Cancel' }, {
+          prompt = 'Are you sure you want to discard all uncommitted changes? (git restore .):',
+        }, function(choice)
+          if choice and choice:match('^1') then
+            actions.run({ 'restore', '.' }, {
+              on_success = function()
+                vim.notify('[gitgraph] Discarded uncommitted changes', vim.log.levels.INFO)
+                refresh_fn()
+              end,
+            })
+          end
+        end)
+      end,
+    })
+
+    return items
+  end
 
   if ctx.type == 'branch' then
     local branch = ctx.branch
@@ -312,6 +369,8 @@ function M.open_context_menu(graph, refresh_fn, pos)
     prompt_title = prompt_title .. ' ' .. ctx.branch
   elseif ctx.type == 'tag' then
     prompt_title = prompt_title .. ' ' .. ctx.tag
+  elseif ctx.type == 'uncommitted' then
+    prompt_title = 'Git Action [UNCOMMITTED CHANGES]'
   else
     prompt_title = prompt_title .. ' ' .. ctx.commit.hash:sub(1, 7)
   end

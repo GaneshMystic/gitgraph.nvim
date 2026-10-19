@@ -46,6 +46,10 @@ function M.set_highlights()
   set_hl('GitGraphTagCap', { fg = tag_color })
   set_hl('GitGraphTagBadge', { fg = '#282828', bg = tag_color, bold = true })
 
+  set_hl('GitGraphUncommitted', { fg = '#e5c07b', bold = true, italic = true })
+  set_hl('GitGraphUncommittedBadge', { fg = '#282828', bg = '#e5c07b', bold = true })
+  set_hl('GitGraphUncommittedCap', { fg = '#e5c07b' })
+
   for _, hg in pairs(M.ITEM_HGS) do
     set_hl(hg.name, { fg = hg.fg })
   end
