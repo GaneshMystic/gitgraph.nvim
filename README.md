@@ -2,9 +2,11 @@
 
 An interactive, visually rich Git Graph plugin for Neovim written in 100% Lua.
 
-`gitgraph.nvim` renders clear topological commit histories directly in a Neovim buffer with distinct branch lanes, powerline-styled branch/tag badges, smooth navigation, and a comprehensive set of interactive Git workflow actions (checkout, merge, rebase, cherry-pick, branch/tag creation, push/pull, and deep integration with [diffview.nvim](https://github.com/sindrets/diffview.nvim)).
+`gitgraph.nvim` renders topological commit histories directly in a Neovim buffer with distinct branch lanes, powerline-styled branch/tag badges, smooth navigation, and a comprehensive set of interactive Git workflow actions (checkout, merge, rebase, cherry-pick, branch/tag creation, push/pull, and deep integration with [diffview.nvim](https://github.com/sindrets/diffview.nvim)).
 
-> **Credit & Appreciation**: Built upon the great foundation of [isakbm/gitgraph.nvim](https://github.com/isakbm/gitgraph.nvim) by [Isak Buhl-Mortensen](https://github.com/isakbm). His core topological graph algorithm made this possible. I added several interactive features, visual refinements, and workflows for daily use—sharing it here in case others find it helpful!
+![GitGraph Preview](assets/screenshot.png)
+
+> **Credit & Appreciation**: Built upon the topological graphing foundation of [isakbm/gitgraph.nvim](https://github.com/isakbm/gitgraph.nvim) by [Isak Buhl-Mortensen](https://github.com/isakbm).
 
 ---
 
@@ -12,7 +14,7 @@ An interactive, visually rich Git Graph plugin for Neovim written in 100% Lua.
 
 - **Topological & Temporal Layout**: Commits stick cleanly to their respective branch lanes with intuitive branch crossing and merge-parent tracking.
 - **Modern Powerline Badges**: Multi-segment Powerline branch and remote tracking badges (`  feature  origin/main `), color-coordinated with each branch lane.
-- **Context-Aware Interactive Menu**: Press `<CR>` or `<Space>` on any commit, branch badge, or tag to invoke an intelligent action menu via `vim.ui.select`.
+- **Context-Aware Action Menu**: Press `<CR>` or `<Space>` on any commit, branch badge, or tag to invoke an intelligent action menu via `vim.ui.select`.
 - **Mouse & Keyboard Driven**: Full support for quick hotkeys as well as right-click context menus and double-click commit inspections.
 - **Safety-First Git Operations**:
   - Intelligent checkout prompts when a local branch is behind remote upstream (`Checkout & Pull` vs `Checkout local`).
@@ -24,8 +26,6 @@ An interactive, visually rich Git Graph plugin for Neovim written in 100% Lua.
 
 ## 📦 Installation
 
-Install with your preferred Neovim package manager.
-
 ### [lazy.nvim](https://github.com/folke/lazy.nvim)
 
 ```lua
@@ -33,13 +33,8 @@ Install with your preferred Neovim package manager.
   'GaneshMystic/gitgraph.nvim',
   dependencies = { 'sindrets/diffview.nvim' }, -- Optional, recommended for diff previews
   opts = {
-    symbols = {
-      merge_commit = 'M',
-      commit = '*',
-    },
     format = {
-      timestamp = '%H:%M:%S %d-%m-%Y',
-      fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag' },
+      fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag', 'message' },
     },
     hooks = {
       on_select_commit = function(commit)
@@ -52,7 +47,7 @@ Install with your preferred Neovim package manager.
   },
   keys = {
     {
-      '<leader>gl',
+      '<leader>gg',
       function()
         require('gitgraph').draw({}, { all = true, max_count = 5000 })
       end,
@@ -68,11 +63,11 @@ Install with your preferred Neovim package manager.
 
 All keymaps are active inside the GitGraph buffer and fully customizable via `opts.keymaps`:
 
-| Action                       | Default Keymap    | Description                                                                                |
-| :--------------------------- | :---------------- | :----------------------------------------------------------------------------------------- |
+| Action                       | Keymap            | Description                                                                                |
+| ---------------------------- | ----------------- | ------------------------------------------------------------------------------------------ |
 | **Context Menu**             | `<CR>`, `<Space>` | Open context-sensitive action menu (tailored to hovered commit, branch badge, or tag)      |
-| **Checkout & Pull**          | `c`               | Checkout branch/commit and pull latest changes from cloud                                  |
-| **Checkout (No Pull)**       | `C`               | Checkout commit/branch directly without pulling changes from cloud                         |
+| **Checkout & Pull**          | `c`               | Checkout branch/commit and pull latest changes from remote                                 |
+| **Checkout (No Pull)**       | `C`               | Checkout commit/branch directly without pulling changes                                    |
 | **Difference View**          | `d`               | Open Diffview for current commit, branch, tag, or uncommitted changes                      |
 | **Create Branch & Checkout** | `a`               | Create a new branch at target and switch to it immediately                                 |
 | **Create Branch Only**       | `A`               | Create branch at target without switching                                                  |
@@ -83,11 +78,11 @@ All keymaps are active inside the GitGraph buffer and fully customizable via `op
 | **Merge (Review)**           | `m`               | Merge branch/commit staged without committing (`--no-commit`) and review                   |
 | **Merge & Commit**           | `M`               | Merge commit/branch into `HEAD` directly                                                   |
 | **Rebase**                   | `R`               | Rebase current `HEAD` onto selected commit/branch                                          |
-| **Reset**                    | `gr`              | Reset current branch to selected commit (prompts for `--soft`, `--mixed`, or `--hard`)     |
+| **Reset**                    | `r`               | Reset current branch to selected commit (prompts for `--soft`, `--mixed`, or `--hard`)     |
 | **Revert**                   | `v`               | Revert selected commit                                                                     |
-| **Push**                     | `gp`              | Push branch to `origin`                                                                    |
-| **Pull**                     | `gP`              | Pull branch from `origin`                                                                  |
-| **Refresh**                  | `r`               | Re-fetch and redraw graph                                                                  |
+| **Push**                     | `gp`              | Push branch to tracked remote                                                              |
+| **Pull**                     | `gP`              | Pull branch from tracked remote                                                            |
+| **Refresh**                  | `gr`              | Re-fetch and redraw graph                                                                  |
 | **Copy Hash / Name**         | `y`               | Copy target commit hash or branch name to system clipboard                                 |
 | **Copy Message**             | `Y`               | Copy commit message to system clipboard                                                    |
 | **Close**                    | `q`, `x`          | Close GitGraph buffer and restore previous window layout                                   |
@@ -100,9 +95,9 @@ All keymaps are active inside the GitGraph buffer and fully customizable via `op
 
 ---
 
-## ⚙️ Configuration
+## ⚙️ Full Configuration Defaults
 
-Default options passed into `require('gitgraph').setup(opts)`:
+Default options available in `require('gitgraph').setup(opts)`:
 
 ```lua
 require('gitgraph').setup({
@@ -137,7 +132,7 @@ require('gitgraph').setup({
   },
   format = {
     timestamp = '%H:%M:%S %d-%m-%Y',
-    fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag' },
+    fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag', 'message' },
   },
   hooks = {
     on_select_commit = function(commit) end,
@@ -167,13 +162,14 @@ require('gitgraph').setup({
     copy_message = 'Y',
   },
 })
+
 ```
 
 ---
 
 ## 🎨 Highlight Groups
 
-You can customize any highlight group used by `gitgraph.nvim`:
+Customize highlight groups to match your active colorscheme:
 
 ### Commit Details
 
@@ -187,10 +183,10 @@ You can customize any highlight group used by `gitgraph.nvim`:
 ### Branch Lanes & Badges
 
 - `GitGraphBranch1` to `GitGraphBranch5`: Rotating colors assigned to each branch lane and connector.
-- Dynamic Powerline badge groups for each branch color index (e.g. `GitGraphBranch1Badge`, `GitGraphBranch1Cap`, `GitGraphBranch1RemoteSep`, `GitGraphRemoteBadge`, `GitGraphRemoteCap`).
+- Dynamic Powerline badge groups for each branch color index (e.g., `GitGraphBranch1Badge`, `GitGraphBranch1Cap`, `GitGraphBranch1RemoteSep`, `GitGraphRemoteBadge`, `GitGraphRemoteCap`).
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](https://www.google.com/search?q=LICENSE).
